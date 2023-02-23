@@ -63,6 +63,26 @@ describe('blogs', () => {
     const titles = blogsAtEnd.map((r) => r.title);
     expect(titles).toContainEqual('Vladyslav Completes Fullstackopen Course');
   });
+
+  test('blog missing "likes" property have 0 likes', async () => {
+    const newBlogWithoutLikes = {
+      title: 'Vladyslav Completes Fullstackopen Course',
+      author: 'V. Ostapchuk',
+      url: 'https://github.com/ostapvladyslav/Fullstackopen',
+    };
+
+    await api
+      .post('/api/blogs')
+      .send(newBlogWithoutLikes)
+      .expect(201)
+      .expect('Content-Type', /application\/json/);
+
+    const blogsAtEnd = await helper.blogsInDb();
+    expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length + 1);
+
+    const blogWithoutLikes = blogsAtEnd[helper.initialBlogs.length];
+    expect(blogWithoutLikes.likes).toBe(0);
+  });
 });
 
 afterAll(async () => {
