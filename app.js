@@ -9,7 +9,6 @@ const mongoose = require('mongoose');
 
 mongoose.set('strictQuery', false);
 
-// mongoose setup
 logger.info('connecting to MongoDB');
 
 mongoose
@@ -22,7 +21,6 @@ mongoose
   });
 
 app.use(cors());
-//? build for react?
 app.use(express.json());
 app.use(middleware.requestLogger);
 
