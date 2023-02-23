@@ -84,6 +84,13 @@ describe('blogs', () => {
     const titles = res.body.map((r) => r.title);
     expect(titles).toContainEqual('React patterns');
   });
+
+  test('blogs have "id" property instead of "_id"', async () => {
+    const res = await api.get('/api/blogs');
+
+    expect(res.body[0].id).toBeDefined();
+    expect(res.body[0]._id).toBeUndefined();
+  });
 });
 
 afterAll(async () => {
