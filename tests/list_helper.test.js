@@ -6,6 +6,7 @@ const listHelper = require('../utils/list_helper');
 //   const result = listHelper.dummy(blogs);
 //   expect(result).toBe(1);
 // });
+
 const listWithOneBlog = [
   {
     _id: '5a422aa71b54a676234d17f8',
@@ -106,6 +107,29 @@ describe('favorite blog', () => {
       title: 'Canonical string reduction',
       author: 'Edsger W. Dijkstra',
       likes: 12,
+    });
+  });
+});
+
+describe('author with most blogs', () => {
+  test('of empty list is empty object', () => {
+    const result = listHelper.mostBlogs([]);
+    expect(result).toEqual({});
+  });
+
+  test('when list has only one blog, equals that blog', () => {
+    const result = listHelper.mostBlogs(listWithOneBlog);
+    expect(result).toEqual({
+      author: 'Edsger W. Dijkstra',
+      blogs: 1,
+    });
+  });
+
+  test('of a bigger list is calculated right', () => {
+    const result = listHelper.mostBlogs(blogs);
+    expect(result).toEqual({
+      author: 'Robert C. Martin',
+      blogs: 3,
     });
   });
 });
