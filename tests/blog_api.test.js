@@ -79,9 +79,19 @@ describe('blogs', () => {
 
     const blogsAtEnd = await helper.blogsInDb();
     expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length + 1);
+    expect(blogsAtEnd[helper.initialBlogs.length].likes).toBe(0);
+  });
 
-    const blogWithoutLikes = blogsAtEnd[helper.initialBlogs.length];
-    expect(blogWithoutLikes.likes).toBe(0);
+  test('blog without title or url is not added', async () => {
+    const invalidBlog = {
+      author: 'V. Ostapchuk',
+      likes: 50,
+    };
+
+    await api.post('/api/blogs').send(invalidBlog).expect(400);
+
+    const blogsAtEnd = await helper.blogsInDb();
+    expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length);
   });
 });
 
