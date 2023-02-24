@@ -102,7 +102,7 @@ describe('addition of a blog', () => {
     expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length);
   });
 
-  test('succeeds when blog missing "likes" property with 0 likes', async () => {
+  test('succeeds when blog missing "likes" property, replacing it with 0 likes', async () => {
     const newBlogWithoutLikes = {
       title: 'Vladyslav Completes Fullstackopen Course',
       author: 'V. Ostapchuk',
@@ -151,6 +151,83 @@ describe('deletion of blog', () => {
 
     const blogsAtEnd = await helper.blogsInDb();
     expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length);
+  });
+});
+
+describe('update of a blog', () => {
+  test('succeeds with valid data', async () => {
+    const blogsAtStart = await helper.blogsInDb();
+    const blogToUpdate = blogsAtStart[0];
+
+    const newBlog = {
+      title: 'Vladyslav Completes Fullstackopen Course',
+      author: 'V. Ostapchuk',
+      url: 'https://github.com/ostapvladyslav/Fullstackopen',
+      likes: 5,
+    };
+
+    const updatedBlog = await api
+      .put(`/api/blogs/${blogToUpdate.id}`)
+      .send(newBlog)
+      .expect(200)
+      .expect('Content-Type', /application\/json/);
+
+    const blogsAtEnd = await helper.blogsInDb();
+    expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length);
+
+    expect(updatedBlog.body.title).toBe(
+      'Vladyslav Completes Fullstackopen Course'
+    );
+  });
+
+  test('fails with 400 if data is invalid', async () => {
+    const blogsAtStart = await helper.blogsInDb();
+    const blogToUpdate = blogsAtStart[0];
+
+    const invalidBlog = {
+      likes: null,
+    };
+
+    await api
+      .put(`/api/blogs/${blogToUpdate.id}`)
+      .send(invalidBlog)
+      .expect(400);
+
+    const blogsAtEnd = await helper.blogsInDb();
+    expect(blogsAtEnd[0].likes).not.toBe('asdf');
+    expect(blogsAtEnd[0].likes).toBe(7);
+  });
+
+  test('succeeds with 200 if blog does not exist', async () => {
+    const validNonexistingId = await helper.nonExistingId();
+    const newBlog = {
+      title: 'Vladyslav Completes Fullstackopen Course',
+      author: 'V. Ostapchuk',
+      url: 'https://github.com/ostapvladyslav/Fullstackopen',
+      likes: 5,
+    };
+
+    const notUpdatedBlog = await api
+      .put(`/api/blogs/${validNonexistingId}`)
+      .send(newBlog)
+      .expect(200);
+
+    const blogsAtEnd = await helper.blogsInDb();
+    expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length);
+    expect(notUpdatedBlog.body).toBe(null);
+  });
+
+  test('fails with 400 if id is invalid', async () => {
+    const invalidId = 1234;
+
+    const newBlog = {
+      title: 'Vladyslav Completes Fullstackopen Course',
+      author: 'V. Ostapchuk',
+      url: 'https://github.com/ostapvladyslav/Fullstackopen',
+      likes: 5,
+    };
+
+    await api.get(`/api/blogs/${invalidId}`).send(newBlog).expect(400);
   });
 });
 
