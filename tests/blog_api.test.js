@@ -23,31 +23,29 @@ describe('when there is initially some blogs saved', () => {
     });
 
     test('all blogs are returned', async () => {
-      // const res = await api.get('/api/blogs');
       const blogsAtStart = await helper.blogsInDb();
 
       expect(blogsAtStart).toHaveLength(helper.initialBlogs.length);
     });
 
     test('a specific blog is within the returned blogs', async () => {
-      const res = await api.get('/api/blogs');
+      const blogsAtStart = await helper.blogsInDb();
 
-      const titles = res.body.map((r) => r.title);
+      const titles = blogsAtStart.map((b) => b.title);
       expect(titles).toContainEqual('React patterns');
     });
 
     test('blogs have "id" property instead of "_id"', async () => {
-      const res = await api.get('/api/blogs');
+      const blogsAtStart = await helper.blogsInDb();
 
-      expect(res.body[0].id).toBeDefined();
-      expect(res.body[0]._id).toBeUndefined();
+      expect(blogsAtStart[0].id).toBeDefined();
+      expect(blogsAtStart[0]._id).toBeUndefined();
     });
   });
 
   describe('viewing a specifig blog', () => {
     test('succeeds with a valid id', async () => {
       const blogsAtStart = await helper.blogsInDb();
-
       const blogToView = blogsAtStart[0];
 
       const resultBlog = await api
@@ -94,6 +92,7 @@ describe('when there is initially some blogs saved', () => {
     });
 
     test('fails with 400 if data is invalid', async () => {
+      const blogsAtStart = await helper.blogsInDb();
       const invalidBlog = {
         author: 'V. Ostapchuk',
         likes: 50,
@@ -103,9 +102,10 @@ describe('when there is initially some blogs saved', () => {
 
       const blogsAtEnd = await helper.blogsInDb();
       expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length);
+      expect(blogsAtEnd).toEqual(blogsAtStart);
     });
 
-    test('succeeds when blog missing "likes" property, replacing it with 0 likes', async () => {
+    test('succeeds when blog missing "likes" property', async () => {
       const newBlogWithoutLikes = {
         title: 'Vladyslav Completes Fullstackopen Course',
         author: 'V. Ostapchuk',
@@ -134,7 +134,7 @@ describe('when there is initially some blogs saved', () => {
       const blogsAtEnd = await helper.blogsInDb();
       expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length - 1);
 
-      const titles = blogsAtEnd.map((r) => r.title);
+      const titles = blogsAtEnd.map((b) => b.title);
       expect(titles).not.toContain(blogToDelete.title);
     });
 
@@ -148,12 +148,14 @@ describe('when there is initially some blogs saved', () => {
     });
 
     test('fails with 400 if id is invalid', async () => {
+      const blogsAtStart = await helper.blogsInDb();
       const invalidId = 1234;
 
       await api.delete(`/api/blogs/${invalidId}`).expect(400);
 
       const blogsAtEnd = await helper.blogsInDb();
       expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length);
+      expect(blogsAtEnd).toEqual(blogsAtStart);
     });
   });
 
@@ -169,7 +171,7 @@ describe('when there is initially some blogs saved', () => {
         likes: 5,
       };
 
-      const updatedBlog = await api
+      await api
         .put(`/api/blogs/${blogToUpdate.id}`)
         .send(newBlog)
         .expect(200)
@@ -177,10 +179,8 @@ describe('when there is initially some blogs saved', () => {
 
       const blogsAtEnd = await helper.blogsInDb();
       expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length);
-
-      expect(updatedBlog.body.title).toBe(
-        'Vladyslav Completes Fullstackopen Course'
-      );
+      const titles = blogsAtEnd.map((b) => b.title);
+      expect(titles).toContainEqual('Vladyslav Completes Fullstackopen Course');
     });
 
     test('fails with 400 if data is invalid', async () => {
@@ -197,12 +197,12 @@ describe('when there is initially some blogs saved', () => {
         .expect(400);
 
       const blogsAtEnd = await helper.blogsInDb();
-      expect(blogsAtEnd[0].likes).not.toBe('asdf');
-      expect(blogsAtEnd[0].likes).toBe(7);
+      expect(blogsAtEnd).toEqual(blogsAtStart);
     });
 
     test('succeeds with 200 if blog does not exist', async () => {
       const validNonexistingId = await helper.nonExistingId();
+      const blogsAtStart = await helper.blogsInDb();
       const newBlog = {
         title: 'Vladyslav Completes Fullstackopen Course',
         author: 'V. Ostapchuk',
@@ -210,18 +210,19 @@ describe('when there is initially some blogs saved', () => {
         likes: 5,
       };
 
-      const notUpdatedBlog = await api
+      await api
         .put(`/api/blogs/${validNonexistingId}`)
         .send(newBlog)
         .expect(200);
 
       const blogsAtEnd = await helper.blogsInDb();
       expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length);
-      expect(notUpdatedBlog.body).toBe(null);
+      expect(blogsAtEnd).toEqual(blogsAtStart);
     });
 
     test('fails with 400 if id is invalid', async () => {
       const invalidId = 1234;
+      const blogsAtStart = helper.blogsInDb();
 
       const newBlog = {
         title: 'Vladyslav Completes Fullstackopen Course',
@@ -231,6 +232,9 @@ describe('when there is initially some blogs saved', () => {
       };
 
       await api.get(`/api/blogs/${invalidId}`).send(newBlog).expect(400);
+
+      const blogsAtEnd = helper.blogsInDb();
+      expect(blogsAtEnd).toEqual(blogsAtStart);
     });
   });
 });
@@ -245,26 +249,91 @@ describe('when there is initially one user in db', () => {
     await user.save();
   });
 
-  test('creation succeeds with a fresh username', async () => {
-    const usersAtStart = await helper.usersInDb();
+  describe('creation', () => {
+    test('succeeds with a fresh username', async () => {
+      const usersAtStart = await helper.usersInDb();
 
-    const newUser = {
-      username: 'vladyslav',
-      name: 'Vladyslav Ostapchuk',
-      password: 'vladpass',
-    };
+      const newUser = {
+        username: 'vladyslav',
+        name: 'Vladyslav Ostapchuk',
+        password: 'vladpass',
+      };
 
-    await api
-      .post('/api/users')
-      .send(newUser)
-      .expect(201)
-      .expect('Content-Type', /application\/json/);
+      await api
+        .post('/api/users')
+        .send(newUser)
+        .expect(201)
+        .expect('Content-Type', /application\/json/);
 
-    const usersAtEnd = await helper.usersInDb();
-    expect(usersAtEnd).toHaveLength(usersAtStart.length + 1);
+      const usersAtEnd = await helper.usersInDb();
+      expect(usersAtEnd).toHaveLength(usersAtStart.length + 1);
 
-    const usernames = usersAtEnd.map((u) => u.username);
-    expect(usernames).toContain(newUser.username);
+      const usernames = usersAtEnd.map((u) => u.username);
+      expect(usernames).toContain(newUser.username);
+    });
+
+    test('fails with 400 if username already taken', async () => {
+      const usersAtStart = await helper.usersInDb();
+
+      const newUser = {
+        username: 'root',
+        name: 'Vladyslav Ostapchuk',
+        password: 'vladpass',
+      };
+
+      const result = await api
+        .post('/api/users')
+        .send(newUser)
+        .expect(400)
+        .expect('Content-Type', /application\/json/);
+
+      expect(result.body.error).toContain('expected `username` to be unique');
+
+      const usersAtEnd = await helper.usersInDb();
+      expect(usersAtEnd).toEqual(usersAtStart);
+    });
+
+    test('fails with 400 if password is invalid', async () => {
+      const usersAtStart = await helper.usersInDb();
+
+      const newUser = {
+        username: 'root',
+        name: 'Vladyslav Ostapchuk',
+      };
+
+      const result = await api
+        .post('/api/users')
+        .send(newUser)
+        .expect(400)
+        .expect('Content-Type', /application\/json/);
+
+      expect(result.body.error).toContain(
+        'password must be at least 3 characters long'
+      );
+
+      const usersAtEnd = await helper.usersInDb();
+      expect(usersAtEnd).toEqual(usersAtStart);
+    });
+
+    test('fails with 400 if data is invalid', async () => {
+      const usersAtStart = await helper.usersInDb();
+
+      const newUser = {
+        name: 'Vladyslav Ostapchuk',
+        password: 'vladpass',
+      };
+
+      const result = await api
+        .post('/api/users')
+        .send(newUser)
+        .expect(400)
+        .expect('Content-Type', /application\/json/);
+
+      expect(result.body.error).toContain('User validation failed:');
+
+      const usersAtEnd = await helper.usersInDb();
+      expect(usersAtEnd).toEqual(usersAtStart);
+    });
   });
 });
 
