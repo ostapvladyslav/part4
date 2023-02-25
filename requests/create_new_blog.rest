@@ -1,0 +1,10 @@
+POST http://localhost:3001/api/notes
+Content-Type: application/json
+# Authorization: Bearer 
+
+{
+  "content": "User id of the note creater as at the start sent along the request",
+  "important": true,
+}
+
+##! add user to blog
