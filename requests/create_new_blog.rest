@@ -1,10 +1,10 @@
-POST http://localhost:3001/api/notes
+POST http://localhost:3003/api/blogs
 Content-Type: application/json
-# Authorization: Bearer 
 
 {
-  "content": "User id of the note creater as at the start sent along the request",
-  "important": true,
+  "title": "Vladyslav Completes Fullstackopen Course",
+  "author": "V. Ostapchuk",
+  "url": "https://github.com/ostapvladyslav/Fullstackopen",
+  "likes": 5,
+  "userId": "63fa67016876102e5e309d30"
 }
-
-##! add user to blog

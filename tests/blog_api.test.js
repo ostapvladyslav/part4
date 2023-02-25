@@ -12,6 +12,12 @@ describe('when there is initially some blogs saved', () => {
   beforeEach(async () => {
     await Blog.deleteMany({});
     await Blog.insertMany(helper.initialBlogs);
+
+    await User.deleteMany({});
+    const passwordHash = await bcrypt.hash('sekret', 10);
+    const user = new User({ username: 'root', passwordHash });
+
+    await user.save();
   });
 
   describe('then', () => {
@@ -71,11 +77,13 @@ describe('when there is initially some blogs saved', () => {
 
   describe('addition of a blog', () => {
     test('succeeds with valid data', async () => {
+      const user = await User.find({});
       const newBlog = {
         title: 'Vladyslav Completes Fullstackopen Course',
         author: 'V. Ostapchuk',
         url: 'https://github.com/ostapvladyslav/Fullstackopen',
         likes: 5,
+        userId: user[0]._id.toString(),
       };
 
       await api
@@ -106,10 +114,12 @@ describe('when there is initially some blogs saved', () => {
     });
 
     test('succeeds when blog missing "likes" property', async () => {
+      const user = await User.find({});
       const newBlogWithoutLikes = {
         title: 'Vladyslav Completes Fullstackopen Course',
         author: 'V. Ostapchuk',
         url: 'https://github.com/ostapvladyslav/Fullstackopen',
+        userId: user[0]._id.toString(),
       };
 
       await api
@@ -242,14 +252,21 @@ describe('when there is initially some blogs saved', () => {
 describe('when there is initially one user in db', () => {
   beforeEach(async () => {
     await User.deleteMany({});
+    await Blog.deleteMany({});
 
     const passwordHash = await bcrypt.hash('sekret', 10);
     const user = new User({ username: 'root', passwordHash });
 
-    await user.save();
+    const newUser = await user.save();
+
+    const blogsWithUsers = helper.initialBlogs.map((blog) => {
+      blog.user = newUser._id.toString();
+      return blog;
+    });
+    await Blog.insertMany(blogsWithUsers);
   });
 
-  describe('creation', () => {
+  describe('addition of a user', () => {
     test('succeeds with a fresh username', async () => {
       const usersAtStart = await helper.usersInDb();
 
