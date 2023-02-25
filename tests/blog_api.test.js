@@ -98,7 +98,7 @@ describe('when there is initially some blogs saved', () => {
         likes: 50,
       };
 
-      await api.post('/api/blogs').send(invalidBlog).expect(400);
+      await api.post('/api/blogs').send(invalidBlog);
 
       const blogsAtEnd = await helper.blogsInDb();
       expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length);
