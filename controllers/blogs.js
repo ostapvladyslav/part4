@@ -38,8 +38,10 @@ blogsRouter.get('/:id', async (req, res) => {
 
 blogsRouter.delete('/:id', middleware.userExtractor, async (req, res) => {
   const blog = await Blog.findById(req.params.id);
-  if (blog.user.toString() === req.user.toString()) {
-    await Blog.deleteOne({ id: req.params.id });
+  if (!blog) return res.status(204).end();
+
+  if (blog.user.toString() === req.user._id.toString()) {
+    await Blog.deleteOne({ _id: req.params.id });
     res.status(204).end();
   } else {
     res.status(401).json({ error: 'invalid user' });

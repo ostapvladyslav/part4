@@ -77,17 +77,21 @@ describe('when there is initially some blogs saved', () => {
 
   describe('addition of a blog', () => {
     test('succeeds with valid data', async () => {
-      const user = await User.find({});
+      const login = await api
+        .post('/api/login')
+        .send({ username: 'root', password: 'sekret' });
+      const token = login.body.token;
+
       const newBlog = {
         title: 'Vladyslav Completes Fullstackopen Course',
         author: 'V. Ostapchuk',
         url: 'https://github.com/ostapvladyslav/Fullstackopen',
         likes: 5,
-        userId: user[0]._id.toString(),
       };
 
       await api
         .post('/api/blogs')
+        .set({ Authorization: `Bearer ${token}` })
         .send(newBlog)
         .expect(201)
         .expect('Content-Type', /application\/json/);
@@ -100,13 +104,22 @@ describe('when there is initially some blogs saved', () => {
     });
 
     test('fails with 400 if data is invalid', async () => {
+      const login = await api
+        .post('/api/login')
+        .send({ username: 'root', password: 'sekret' });
+      const token = login.body.token;
+
       const blogsAtStart = await helper.blogsInDb();
       const invalidBlog = {
         author: 'V. Ostapchuk',
         likes: 50,
       };
 
-      await api.post('/api/blogs').send(invalidBlog);
+      await api
+        .post('/api/blogs')
+        .set({ Authorization: `Bearer ${token}` })
+        .send(invalidBlog)
+        .expect(400);
 
       const blogsAtEnd = await helper.blogsInDb();
       expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length);
@@ -114,16 +127,19 @@ describe('when there is initially some blogs saved', () => {
     });
 
     test('succeeds when blog missing "likes" property', async () => {
-      const user = await User.find({});
       const newBlogWithoutLikes = {
         title: 'Vladyslav Completes Fullstackopen Course',
         author: 'V. Ostapchuk',
         url: 'https://github.com/ostapvladyslav/Fullstackopen',
-        userId: user[0]._id.toString(),
       };
+      const login = await api
+        .post('/api/login')
+        .send({ username: 'root', password: 'sekret' });
+      const token = login.body.token;
 
       await api
         .post('/api/blogs')
+        .set({ Authorization: `Bearer ${token}` })
         .send(newBlogWithoutLikes)
         .expect(201)
         .expect('Content-Type', /application\/json/);
@@ -132,38 +148,97 @@ describe('when there is initially some blogs saved', () => {
       expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length + 1);
       expect(blogsAtEnd[helper.initialBlogs.length].likes).toBe(0);
     });
+
+    test('fails with 400 if no token provided', async () => {
+      const blogsAtStart = await helper.blogsInDb();
+      const newBlog = {
+        title: 'Vladyslav Completes Fullstackopen Course',
+        author: 'V. Ostapchuk',
+        url: 'https://github.com/ostapvladyslav/Fullstackopen',
+        likes: 5,
+      };
+
+      const result = await api.post('/api/blogs').send(newBlog).expect(400);
+
+      expect(result.body.error).toContain('jwt must be provided');
+      const blogsAtEnd = await helper.blogsInDb();
+      expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length);
+      expect(blogsAtEnd).toEqual(blogsAtStart);
+    });
   });
 
   describe('deletion of blog', () => {
+    beforeEach(async () => {
+      await User.deleteMany({});
+      await Blog.deleteMany({});
+
+      const passwordHash = await bcrypt.hash('sekret', 10);
+      const user = new User({ username: 'rootDelete', passwordHash });
+
+      const newUser = await user.save();
+
+      const blogsWithUsers = helper.initialBlogs.map((blog) => {
+        blog.user = newUser._id.toString();
+        return blog;
+      });
+      await Blog.insertMany(blogsWithUsers);
+    });
+
     test('succeeds with 204 if id is valid', async () => {
-      const blogsAtStart = await helper.blogsInDb();
+      const login = await api
+        .post('/api/login')
+        .send({ username: 'rootDelete', password: 'sekret' });
+      const token = login.body.token;
+
+      const blogsStart = await Blog.find({});
+      const blogsAtStart = blogsStart.map((blog) => blog.toJSON());
       const blogToDelete = blogsAtStart[0];
 
-      await api.delete(`/api/blogs/${blogToDelete.id}`).expect(204);
+      await api
+        .delete(`/api/blogs/${blogToDelete.id}`)
+        .set({ Authorization: `Bearer ${token}` })
+        .expect(204);
 
-      const blogsAtEnd = await helper.blogsInDb();
-      expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length - 1);
+      const blogsEnd = await Blog.find({});
+      const blogsAtEnd = blogsEnd.map((blog) => blog.toJSON());
+      expect(blogsAtEnd).toHaveLength(blogsAtStart.length - 1);
 
       const titles = blogsAtEnd.map((b) => b.title);
       expect(titles).not.toContain(blogToDelete.title);
     });
 
     test('succeeds with 204 if blog does not exist', async () => {
+      const login = await api
+        .post('/api/login')
+        .send({ username: 'rootDelete', password: 'sekret' });
+      const token = login.body.token;
       const validNonexistingId = await helper.nonExistingId();
 
-      await api.delete(`/api/blogs/${validNonexistingId}`).expect(204);
+      await api
+        .delete(`/api/blogs/${validNonexistingId}`)
+        .set({ Authorization: `Bearer ${token}` })
+        .expect(204);
 
       const blogsAtEnd = await helper.blogsInDb();
       expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length);
     });
 
     test('fails with 400 if id is invalid', async () => {
-      const blogsAtStart = await helper.blogsInDb();
+      const login = await api
+        .post('/api/login')
+        .send({ username: 'rootDelete', password: 'sekret' });
+      const token = login.body.token;
       const invalidId = 1234;
+      const blogsStart = await Blog.find({});
+      const blogsAtStart = blogsStart.map((blog) => blog.toJSON());
 
-      await api.delete(`/api/blogs/${invalidId}`).expect(400);
+      await api
+        .delete(`/api/blogs/${invalidId}`)
+        .set({ Authorization: `Bearer ${token}` })
+        .expect(400);
 
-      const blogsAtEnd = await helper.blogsInDb();
+      const blogEnd = await Blog.find({});
+      const blogsAtEnd = blogEnd.map((blog) => blog.toJSON());
       expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length);
       expect(blogsAtEnd).toEqual(blogsAtStart);
     });
@@ -252,18 +327,10 @@ describe('when there is initially some blogs saved', () => {
 describe('when there is initially one user in db', () => {
   beforeEach(async () => {
     await User.deleteMany({});
-    await Blog.deleteMany({});
-
     const passwordHash = await bcrypt.hash('sekret', 10);
     const user = new User({ username: 'root', passwordHash });
 
-    const newUser = await user.save();
-
-    const blogsWithUsers = helper.initialBlogs.map((blog) => {
-      blog.user = newUser._id.toString();
-      return blog;
-    });
-    await Blog.insertMany(blogsWithUsers);
+    await user.save();
   });
 
   describe('addition of a user', () => {
