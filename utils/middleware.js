@@ -1,5 +1,4 @@
 const User = require('../models/user');
-const config = require('./config');
 const logger = require('./logger');
 
 const jwt = require('jsonwebtoken');
@@ -12,23 +11,29 @@ const requestLogger = (req, res, next) => {
   next();
 };
 
-const tokenExtractor = (req, res, next) => {
-  const authorization = req.get('authorization');
-  if (authorization && authorization.startsWith('Bearer ')) {
-    req.token = authorization.substring(7);
+const getTokenFrom = (request) => {
+  const authorization = request.get('authorization');
+  if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
+    return authorization.substring(7);
   }
+  return null;
+};
 
+const tokenExtractor = (request, response, next) => {
+  request.token = getTokenFrom(request);
   next();
 };
 
-const userExtractor = async (req, res, next) => {
-  const decodedToken = jwt.verify(req.token, config.SECRET);
-  if (!req.token || !decodedToken.id) {
-    return res.status(401).json({ error: 'token invalid' });
-  }
-  const user = await User.findById(decodedToken.id);
-  if (user) {
-    req.user = user;
+const userExtractor = async (request, response, next) => {
+  const token = getTokenFrom(request);
+
+  if (token) {
+    const decodedToken = jwt.verify(token, process.env.SECRET);
+    if (!decodedToken.id) {
+      return response.status(401).json({ error: 'token invalid' });
+    }
+
+    request.user = await User.findById(decodedToken.id);
   }
 
   next();

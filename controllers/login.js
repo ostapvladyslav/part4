@@ -1,4 +1,3 @@
-const config = require('../utils/config');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const loginRouter = require('express').Router();
@@ -23,7 +22,7 @@ loginRouter.post('/', async (req, res) => {
   };
 
   // expires in 60*60 seconds = 1hour
-  const token = jwt.sign(userForToken, config.SECRET, {
+  const token = jwt.sign(userForToken, process.env.SECRET, {
     expiresIn: 60 * 60,
   });
 

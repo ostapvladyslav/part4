@@ -30,6 +30,7 @@ usersRouter.get('/', async (req, res) => {
     url: 1,
     title: 1,
     author: 1,
+    likes: 1,
   });
   res.json(users);
 });
