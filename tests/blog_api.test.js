@@ -48,63 +48,6 @@ describe('blogs api', () => {
       });
     });
 
-    describe('update of a blog', () => {
-      test('succeeds with 200 with proper id', async () => {
-        const [blogBefore] = await blogsInDb();
-
-        const modifiedBlog = { ...blogBefore, title: 'Goto considered useful' };
-
-        await api
-          .put(`/api/blogs/${blogBefore.id}`)
-          .send(modifiedBlog)
-          .expect(200);
-
-        const blogs = await blogsInDb();
-
-        const titles = blogs.map((b) => b.title);
-        expect(titles).toContain(modifiedBlog.title);
-      });
-
-      test('fails with 400 if data is invalid', async () => {
-        const [blogBefore] = await blogsInDb();
-
-        const modifiedBlog = { ...blogBefore, title: null };
-
-        await api
-          .put(`/api/blogs/${blogBefore.id}`)
-          .send(modifiedBlog)
-          .expect(400);
-
-        const [blogAtEnd] = await blogsInDb();
-        expect(blogAtEnd).toEqual(blogBefore);
-      });
-
-      test('succeeds with 200 if blog does not exist', async () => {
-        const validNonexistingId = await nonExistingId();
-        const [blogBefore] = await blogsInDb();
-        const modifiedBlog = { ...blogBefore, title: 'Goto considered useful' };
-
-        await api
-          .put(`/api/blogs/${validNonexistingId}`)
-          .send(modifiedBlog)
-          .expect(200);
-
-        const [blogAtEnd] = await blogsInDb();
-        expect(blogAtEnd).toEqual(blogBefore);
-      });
-
-      test('fails with 400 if id is invalid', async () => {
-        const invalidId = 1234;
-        const [blogBefore] = await blogsInDb();
-        const modifiedBlog = { ...blogBefore, title: 'Goto considered useful' };
-
-        await api.get(`/api/blogs/${invalidId}`).send(modifiedBlog).expect(400);
-
-        const [blogAtEnd] = await blogsInDb();
-        expect(blogAtEnd).toEqual(blogBefore);
-      });
-    });
-
     describe('viewing a specifig blog', () => {
       test('succeeds with 201 with valid id', async () => {
         const [blogToView] = await blogsInDb();
@@ -222,7 +165,7 @@ describe('blogs api', () => {
     });
   });
 
-  describe('deletion of a blog', () => {
+  describe('modifying a blog', () => {
     let id;
     beforeEach(async () => {
       await Blog.deleteMany({});
@@ -242,45 +185,104 @@ describe('blogs api', () => {
       id = result.body.id;
     });
 
-    test('succeeds with 204 by the creator', async () => {
-      await api
-        .delete(`/api/blogs/${id}`)
-        .set('Authorization', authHeader)
-        .expect(204);
+    describe('update of a blog', () => {
+      test('succeeds with 200 with proper id', async () => {
+        const [blogBefore] = await blogsInDb();
 
-      const blogsAtEnd = await blogsInDb();
-      expect(blogsAtEnd).toHaveLength(0);
+        const modifiedBlog = { ...blogBefore, title: 'Goto considered useful' };
+
+        await api
+          .put(`/api/blogs/${blogBefore.id}`)
+          .send(modifiedBlog)
+          .expect(200);
+
+        const blogs = await blogsInDb();
+
+        const titles = blogs.map((b) => b.title);
+        expect(titles).toContain(modifiedBlog.title);
+      });
+
+      test('fails with 400 if data is invalid', async () => {
+        const [blogBefore] = await blogsInDb();
+
+        const modifiedBlog = { ...blogBefore, title: null };
+
+        await api
+          .put(`/api/blogs/${blogBefore.id}`)
+          .send(modifiedBlog)
+          .expect(400);
+
+        const [blogAtEnd] = await blogsInDb();
+        expect(blogAtEnd).toEqual(blogBefore);
+      });
+
+      test('succeeds with 200 if blog does not exist', async () => {
+        const validNonexistingId = await nonExistingId();
+        const [blogBefore] = await blogsInDb();
+        const modifiedBlog = { ...blogBefore, title: 'Goto considered useful' };
+
+        await api
+          .put(`/api/blogs/${validNonexistingId}`)
+          .send(modifiedBlog)
+          .expect(200);
+
+        const [blogAtEnd] = await blogsInDb();
+        expect(blogAtEnd).toEqual(blogBefore);
+      });
+
+      test('fails with 400 if id is invalid', async () => {
+        const invalidId = 1234;
+        const [blogBefore] = await blogsInDb();
+        const modifiedBlog = { ...blogBefore, title: 'Goto considered useful' };
+
+        await api.get(`/api/blogs/${invalidId}`).send(modifiedBlog).expect(400);
+
+        const [blogAtEnd] = await blogsInDb();
+        expect(blogAtEnd).toEqual(blogBefore);
+      });
     });
 
-    test('fails with 401 without valid token', async () => {
-      await api.delete(`/api/blogs/${id}`).expect(401);
+    describe('deletion of a blog', () => {
+      test('succeeds with 204 by the creator', async () => {
+        await api
+          .delete(`/api/blogs/${id}`)
+          .set('Authorization', authHeader)
+          .expect(204);
 
-      const blogsAtEnd = await blogsInDb();
-      expect(blogsAtEnd).toHaveLength(1);
-    });
+        const blogsAtEnd = await blogsInDb();
+        expect(blogsAtEnd).toHaveLength(0);
+      });
 
-    test('fails with 401 if blog does not exist', async () => {
-      const validNonexistingId = await nonExistingId();
+      test('fails with 401 without valid token', async () => {
+        await api.delete(`/api/blogs/${id}`).expect(401);
 
-      await api
-        .delete(`/api/blogs/${validNonexistingId}`)
-        .set('Authorization', authHeader)
-        .expect(401);
+        const blogsAtEnd = await blogsInDb();
+        expect(blogsAtEnd).toHaveLength(1);
+      });
 
-      const blogsAtEnd = await blogsInDb();
-      expect(blogsAtEnd).toHaveLength(1);
-    });
+      test('fails with 401 if blog does not exist', async () => {
+        const validNonexistingId = await nonExistingId();
 
-    test('fails with 400 if id is invalid', async () => {
-      const invalidId = 1234;
+        await api
+          .delete(`/api/blogs/${validNonexistingId}`)
+          .set('Authorization', authHeader)
+          .expect(401);
 
-      await api
-        .delete(`/api/blogs/${invalidId}`)
-        .set('Authorization', authHeader)
-        .expect(400);
+        const blogsAtEnd = await blogsInDb();
+        expect(blogsAtEnd).toHaveLength(1);
+      });
 
-      const blogsAtEnd = await blogsInDb();
-      expect(blogsAtEnd).toHaveLength(1);
+      test('fails with 400 if id is invalid', async () => {
+        const invalidId = 1234;
+
+        await api
+          .delete(`/api/blogs/${invalidId}`)
+          .set('Authorization', authHeader)
+          .expect(400);
+
+        const blogsAtEnd = await blogsInDb();
+        expect(blogsAtEnd).toHaveLength(1);
+      });
     });
   });
 

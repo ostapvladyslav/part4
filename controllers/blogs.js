@@ -11,20 +11,19 @@ blogsRouter.get('/', async (req, res) => {
 blogsRouter.post('/', userExtractor, async (req, res) => {
   const { title, author, url, likes } = req.body;
 
-  const blog = new Blog({
+  const user = req.user;
+
+  const blog = await new Blog({
     title,
     author,
     url,
     likes: likes ? likes : 0,
-  });
-
-  const user = req.user;
+    user: req.user,
+  }).populate('user', { username: 1, name: 1 });
 
   if (!user) {
     return res.status(401).json({ error: 'operation not permitted' });
   }
-
-  blog.user = user._id;
 
   const savedBlog = await blog.save();
 
@@ -60,13 +59,13 @@ blogsRouter.delete('/:id', userExtractor, async (req, res) => {
 });
 
 blogsRouter.put('/:id', async (req, res) => {
-  const { title, author, url, likes } = req.body;
+  const { title, author, url, likes, user } = req.body;
 
   const updatedBlog = await Blog.findByIdAndUpdate(
     req.params.id,
-    { title, url, author, likes },
+    { title, url, likes, author, user: user.id },
     { new: true, runValidators: true, context: 'query' }
-  );
+  ).populate('user', { username: 1, name: 1 });
   res.json(updatedBlog);
 });
 
